@@ -1,0 +1,14 @@
+# Ignore build outputs
+/build/
+*.exe
+*.out
+
+# Go dependency files (only keep `go.sum` and `go.mod`)
+/vendor/
+/*.test
+/testdata/
+
+# Cache directories
+/.cache/
+/tmp/
+
