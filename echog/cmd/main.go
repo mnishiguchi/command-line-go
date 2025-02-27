@@ -14,19 +14,7 @@ func main() {
 		Name:    "echog",
 		Usage:   "Go version of `echo`",
 		Version: "0.1.0",
-		Action: func(c *cli.Context) error {
-			text := c.Args().Slice()
-			omitNewline := c.Bool("n")
-
-			output := strings.Join(text, " ")
-			if omitNewline {
-				fmt.Print(output)
-			} else {
-				fmt.Println(output)
-			}
-
-			return nil
-		},
+		Action:  runEcho,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "n",
@@ -36,8 +24,20 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func runEcho(ctx *cli.Context) error {
+	message := strings.Join(ctx.Args().Slice(), " ")
+	omitNewline := ctx.Bool("n")
+
+	if omitNewline {
+		fmt.Print(message)
+	} else {
+		fmt.Println(message)
+	}
+
+	return nil
 }
