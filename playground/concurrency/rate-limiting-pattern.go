@@ -18,17 +18,17 @@ import (
    - Regulating data ingestion to prevent server overload
 */
 
-// processTask simulates processing a task with controlled execution speed.
+// simulates processing a task with controlled execution speed.
 func processTask(id int) {
 	fmt.Printf("✅ Task %d executed at %s\n", id, time.Now().Format("15:04:05.000"))
 }
 
 func main() {
-	const totalTasks = 10                             // Number of tasks to execute
-	const rateLimit = 2                               // Number of tasks allowed per second
+	const totalTasks = 10    // Number of tasks to execute
+	const tasksPerSecond = 2 // Number of tasks allowed per second
 
-	ticker := time.NewTicker(time.Second / rateLimit) // Creates a pacing mechanism
-	defer ticker.Stop()                               // Stop the ticker when done
+	ticker := time.NewTicker(time.Second / tasksPerSecond) // Creates a pacing mechanism
+	defer ticker.Stop()                                    // Stop the ticker when done
 
 	fmt.Println("🚀 Starting rate-limited task execution...")
 
