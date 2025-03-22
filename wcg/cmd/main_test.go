@@ -14,22 +14,54 @@ import (
 )
 
 func TestPrintCounts(t *testing.T) {
-	var buf bytes.Buffer
-	stdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+  tests := []struct {
+    name     string
+    stats    *internal.FileStats
+    opts     CountOptions
+    label    string
+    expected string
+  }{
+    {
+      name:     "all_fields_on",
+      stats:    &internal.FileStats{Lines: 2, Words: 7, Bytes: 48, Chars: 48},
+      opts:     CountOptions{Lines: true, Words: true, Bytes: true, Chars: true},
+      label:    "test.txt",
+      expected: "  2   7  48  48 test.txt\n",
+    },
+    {
+      name:     "chars_only",
+      stats:    &internal.FileStats{Chars: 99},
+      opts:     CountOptions{Chars: true},
+      label:    "data.txt",
+      expected: " 99 data.txt\n",
+    },
+    {
+      name:     "stdin_label_omitted",
+      stats:    &internal.FileStats{Lines: 1, Words: 1, Bytes: 5},
+      opts:     CountOptions{Lines: true, Words: true, Bytes: true},
+      label:    "-",
+      expected: "  1   1   5\n",
+    },
+  }
 
-	stats := &internal.FileStats{Lines: 2, Words: 7, Bytes: 48, Chars: 48}
-	opts := CountOptions{Lines: true, Words: true, Bytes: true, Chars: false}
-	printCounts(stats, opts, "test.txt")
+  for _, tt := range tests {
+    t.Run(tt.name, func(t *testing.T) {
+      // Capture stdout
+      r, w, _ := os.Pipe()
+      oldStdout := os.Stdout
+      os.Stdout = w
 
-	// Restore stdout
-	w.Close()
-	os.Stdout = stdout
-	_, _ = io.Copy(&buf, r)
+      printCounts(tt.stats, tt.opts, tt.label)
 
-	expected := "  2   7  48 test.txt\n"
-	assert.Equal(t, expected, buf.String(), "Print output should match expected formatting for selected stats")
+      w.Close()
+      os.Stdout = oldStdout
+
+      var buf bytes.Buffer
+      _, _ = io.Copy(&buf, r)
+
+      assert.Equal(t, tt.expected, buf.String())
+    })
+  }
 }
 
 func TestRunWordCount(t *testing.T) {
