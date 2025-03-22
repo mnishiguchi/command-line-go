@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mnishiguchi/command-line-go/wcg/internal"
+	"github.com/mnishiguchi/command-line-go/wcg/internal/filestats"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -16,28 +16,28 @@ import (
 func TestPrintCounts(t *testing.T) {
   tests := []struct {
     name     string
-    stats    *internal.FileStats
+    stats    *filestats.FileStats
     opts     CountOptions
     label    string
     expected string
   }{
     {
       name:     "all_fields_on",
-      stats:    &internal.FileStats{Lines: 2, Words: 7, Bytes: 48, Chars: 48},
+      stats:    &filestats.FileStats{Lines: 2, Words: 7, Bytes: 48, Chars: 48},
       opts:     CountOptions{Lines: true, Words: true, Bytes: true, Chars: true},
       label:    "test.txt",
       expected: "  2   7  48  48 test.txt\n",
     },
     {
       name:     "chars_only",
-      stats:    &internal.FileStats{Chars: 99},
+      stats:    &filestats.FileStats{Chars: 99},
       opts:     CountOptions{Chars: true},
       label:    "data.txt",
       expected: " 99 data.txt\n",
     },
     {
       name:     "stdin_label_omitted",
-      stats:    &internal.FileStats{Lines: 1, Words: 1, Bytes: 5},
+      stats:    &filestats.FileStats{Lines: 1, Words: 1, Bytes: 5},
       opts:     CountOptions{Lines: true, Words: true, Bytes: true},
       label:    "-",
       expected: "  1   1   5\n",

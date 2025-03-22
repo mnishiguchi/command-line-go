@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mnishiguchi/command-line-go/wcg/internal"
+	"github.com/mnishiguchi/command-line-go/wcg/internal/filestats"
 	"github.com/urfave/cli/v2"
 )
 
@@ -61,7 +61,7 @@ func runWordCount(c *cli.Context) error {
 	}
 
 	// Create a FileStats struct to keep track of accumulated statistics across multiple files.
-	var tally internal.FileStats
+	var tally filestats.FileStats
 
 	// Process each file specified in the command arguments
 	for _, file := range files {
@@ -72,11 +72,11 @@ func runWordCount(c *cli.Context) error {
 			continue
 		}
 
-		fileStats, err := func() (*internal.FileStats, error) {
+		fileStats, err := func() (*filestats.FileStats, error) {
 			// Use an inline function to ensure the file is closed immediately after processing,
 			// avoiding deferred resource cleanup inside a loop which can lead to too many open files.
 			defer input.Close()
-			return internal.GetFileStats(input)
+			return filestats.GetFileStats(input)
 		}()
 
 		if err != nil {
@@ -117,7 +117,7 @@ func openInputSource(filename string) (io.ReadCloser, error) {
 	return file, nil
 }
 
-func printCounts(stats *internal.FileStats, opts CountOptions, label string) {
+func printCounts(stats *filestats.FileStats, opts CountOptions, label string) {
 	var counts []string
 	if opts.Lines {
 		counts = append(counts, fmt.Sprintf("%3d", stats.Lines))
