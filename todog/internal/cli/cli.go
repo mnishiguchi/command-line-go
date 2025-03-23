@@ -99,6 +99,37 @@ echo "task from pipe" | todog add`,
 					return nil
 				},
 			},
+			{
+				Name:      "delete",
+				Usage:     "Delete a task by its number",
+				UsageText: "todog delete <task number>",
+				Action: func(c *cli.Context) error {
+					if c.NArg() != 1 {
+						return fmt.Errorf("please provide a task number to delete")
+					}
+
+					num, err := strconv.Atoi(c.Args().First())
+					if err != nil || num <= 0 {
+						return fmt.Errorf("invalid task number: %s", c.Args().First())
+					}
+
+					list, file, err := loadTodoList()
+					if err != nil {
+						return err
+					}
+
+					if err := list.Delete(num); err != nil {
+						return fmt.Errorf("failed to delete task: %w", err)
+					}
+
+					if err := list.Save(file); err != nil {
+						return fmt.Errorf("failed to save list: %w", err)
+					}
+
+					fmt.Printf("Deleted task #%d.\n", num)
+					return nil
+				},
+			},
 		},
 	}
 

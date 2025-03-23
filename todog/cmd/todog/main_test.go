@@ -86,6 +86,19 @@ func TestTodoCLI(t *testing.T) {
 		assert.Contains(t, output, expected1, "expected completed task in output")
 		assert.Contains(t, output, expected2, "expected second task to remain incomplete")
 	})
+
+	t.Run("DeleteSecondTask", func(t *testing.T) {
+		_, err := runCommand(tmpFile.Name(), "delete", "2")
+		require.NoError(t, err, "should delete second task")
+	})
+
+	t.Run("ListTasksAfterDelete", func(t *testing.T) {
+		output, err := runCommand(tmpFile.Name(), "list")
+		require.NoError(t, err, "should list tasks after deletion without error")
+
+		assert.Contains(t, output, task1, "first task should remain")
+		assert.NotContains(t, output, task2, "second task should be deleted")
+	})
 }
 
 func runCommand(todoFile string, args ...string) (string, error) {
