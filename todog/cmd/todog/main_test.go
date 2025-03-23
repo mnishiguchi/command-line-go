@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,8 +13,8 @@ import (
 )
 
 var (
-	binName = "todog" // Name of the binary to build
-	binPath string    // Full path to the compiled binary (set in TestMain)
+	binName = "todog"
+	binPath string
 )
 
 // TestMain builds the CLI binary before tests run, and cleans it up after.
@@ -26,60 +25,61 @@ func TestMain(m *testing.M) {
 		binName += ".exe"
 	}
 
-	// Get absolute path to the binary (e.g., ./todog)
 	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get working dir: %v\n", err)
-		os.Exit(1)
-	}
+	require.NoError(nil, err, "failed to get working directory")
+
 	binPath = filepath.Join(cwd, binName)
 
-	// Build the binary from current directory
 	cmd := exec.Command("go", "build", "-o", binPath, ".")
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to build CLI: %v\n", err)
-		os.Exit(1)
-	}
+	require.NoError(nil, cmd.Run(), "failed to build CLI")
 
-	// Run tests
 	code := m.Run()
 
-	// Clean up the binary
 	fmt.Println("Cleaning up...")
 	_ = os.Remove(binPath)
 
 	os.Exit(code)
 }
 
-// TestTodoCLI runs basic end-to-end tests against the compiled CLI binary.
 func TestTodoCLI(t *testing.T) {
 	task := "test task number 1"
 
-	// Create a temporary file for isolated task storage
+	// Create an isolated file for testing
 	tmpFile, err := os.CreateTemp("", "todo-test-*.json")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 
 	t.Run("AddNewTask", func(t *testing.T) {
-		// Simulate running: todog test task number 1
-		cmd := exec.Command(binPath, strings.Split(task, " ")...)
-		cmd.Env = append(os.Environ(), "TODOG_FILE="+tmpFile.Name())
-
-		err := cmd.Run()
-		require.NoError(t, err)
+		_, err := runCommand(tmpFile.Name(), "task", task)
+		require.NoError(t, err, "should add a new task without error")
 	})
 
 	t.Run("ListTasks", func(t *testing.T) {
-		// Simulate running: todog
-		cmd := exec.Command(binPath)
-		cmd.Env = append(os.Environ(), "TODOG_FILE="+tmpFile.Name())
+		output, err := runCommand(tmpFile.Name(), "list")
+		require.NoError(t, err, "should list tasks without error")
 
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err)
-
-		output := string(out)
 		expected := fmt.Sprintf("1. [ ] %s\n", task)
-
-		assert.Contains(t, output, expected, "Expected task to appear in output")
+		assert.Contains(t, output, expected, "expected task to appear in output")
 	})
+
+	t.Run("CompleteTask", func(t *testing.T) {
+		_, err := runCommand(tmpFile.Name(), "complete", "1")
+		require.NoError(t, err, "should complete task without error")
+	})
+
+	t.Run("ListTasksAfterComplete", func(t *testing.T) {
+		output, err := runCommand(tmpFile.Name(), "list")
+		require.NoError(t, err, "should list tasks after completion without error")
+
+		expected := fmt.Sprintf("1. [x] %s\n", task)
+		assert.Contains(t, output, expected, "expected completed task in output")
+	})
+}
+
+func runCommand(todoFile string, args ...string) (string, error) {
+	cmd := exec.Command(binPath, args...)
+	cmd.Env = append(os.Environ(), "TODOG_FILE="+todoFile)
+
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
