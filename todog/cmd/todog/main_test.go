@@ -102,6 +102,24 @@ func TestTodoCLI(t *testing.T) {
 		assert.Contains(t, output, expected2, "expected second task to remain incomplete")
 	})
 
+	t.Run("AddMultipleTasksWithMultiline", func(t *testing.T) {
+		multilineInput := `task from stdin line 1
+task from stdin line 2
+task from stdin line 3`
+
+		_, err := runCommandWithStdin(tmpFile.Name(), multilineInput, "add", "--multiline")
+		require.NoError(t, err, "should add multiple tasks from multiline stdin")
+	})
+
+	t.Run("ListTasksAfterMultilineAdd", func(t *testing.T) {
+		output, err := runCommand(tmpFile.Name(), "list")
+		require.NoError(t, err, "should list tasks after multiline input")
+
+		assert.Contains(t, output, "task from stdin line 1")
+		assert.Contains(t, output, "task from stdin line 2")
+		assert.Contains(t, output, "task from stdin line 3")
+	})
+
 	t.Run("DeleteSecondTask", func(t *testing.T) {
 		_, err := runCommand(tmpFile.Name(), "delete", "2")
 		require.NoError(t, err, "should delete second task")

@@ -85,28 +85,41 @@ func Execute(version string) {
 				},
 			},
 			{
-				Name:  "add",
-				Usage: "Add a new task (from argument or STDIN)",
-				UsageText: `todog add [task]
-echo "task from pipe" | todog add`,
+				Name:      "add",
+				Usage:     "Add a new task (from args or stdin)",
+				UsageText: "todog add [task description] [--multiline]",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "multiline",
+						Usage: "Enable multiline STDIN input (one task per line)",
+					},
+				},
 				Action: func(c *cli.Context) error {
-					task, err := getTask(os.Stdin, c.Args().Slice()...)
-					if err != nil {
-						return err
-					}
-
 					list, file, err := loadTodoList()
 					if err != nil {
 						return err
 					}
 
-					list.Add(task)
+					var tasks []string
 
-					if err := list.Save(file); err != nil {
-						return fmt.Errorf("failed to save task: %w", err)
+					if c.Bool("multiline") {
+						tasks, err = getTasksMultiline(os.Stdin)
+					} else {
+						tasks, err = getTask(os.Stdin, c.Args().Slice()...)
+					}
+					if err != nil {
+						return err
 					}
 
-					fmt.Printf("Added task: %q\n", task)
+					for _, task := range tasks {
+						list.Add(task)
+						fmt.Printf("Added task: %q\n", task)
+					}
+
+					if err := list.Save(file); err != nil {
+						return fmt.Errorf("failed to save tasks: %w", err)
+					}
+
 					return nil
 				},
 			},
@@ -181,25 +194,47 @@ echo "task from pipe" | todog add`,
 	}
 }
 
-func getTask(r io.Reader, args ...string) (string, error) {
+func getTask(r io.Reader, args ...string) ([]string, error) {
 	if len(args) > 0 {
-		return strings.Join(args, " "), nil
+		return []string{strings.Join(args, " ")}, nil
 	}
 
 	scanner := bufio.NewScanner(r)
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return "", err
+			return nil, err
 		}
-		return "", fmt.Errorf("task input is required")
+		return nil, fmt.Errorf("task input is required")
 	}
 
-	text := strings.TrimSpace(scanner.Text())
-	if text == "" {
-		return "", fmt.Errorf("task cannot be blank")
+	line := strings.TrimSpace(scanner.Text())
+	if line == "" {
+		return nil, fmt.Errorf("task cannot be blank")
 	}
 
-	return text, nil
+	return []string{line}, nil
+}
+
+func getTasksMultiline(r io.Reader) ([]string, error) {
+	scanner := bufio.NewScanner(r)
+	var tasks []string
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			tasks = append(tasks, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(tasks) == 0 {
+		return nil, fmt.Errorf("no task input provided")
+	}
+
+	return tasks, nil
 }
 
 func loadTodoList() (*todo.List, string, error) {
