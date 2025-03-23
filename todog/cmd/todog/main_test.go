@@ -42,24 +42,33 @@ func TestMain(m *testing.M) {
 }
 
 func TestTodoCLI(t *testing.T) {
-	task := "test task number 1"
+	task1 := "test task number 1"
+	task2 := "second task from stdin"
 
 	// Create an isolated file for testing
 	tmpFile, err := os.CreateTemp("", "todo-test-*.json")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 
-	t.Run("AddNewTask", func(t *testing.T) {
-		_, err := runCommand(tmpFile.Name(), "task", task)
-		require.NoError(t, err, "should add a new task without error")
+	t.Run("AddNewTaskFromArguments", func(t *testing.T) {
+		_, err := runCommand(tmpFile.Name(), "add", task1)
+		require.NoError(t, err, "should add a new task from arguments")
+	})
+
+	t.Run("AddNewTaskFromSTDIN", func(t *testing.T) {
+		_, err := runCommandWithStdin(tmpFile.Name(), task2, "add")
+		require.NoError(t, err, "should add a new task from stdin")
 	})
 
 	t.Run("ListTasks", func(t *testing.T) {
 		output, err := runCommand(tmpFile.Name(), "list")
 		require.NoError(t, err, "should list tasks without error")
 
-		expected := fmt.Sprintf("1. [ ] %s\n", task)
-		assert.Contains(t, output, expected, "expected task to appear in output")
+		expected1 := fmt.Sprintf("1. [ ] %s", task1)
+		expected2 := fmt.Sprintf("2. [ ] %s", task2)
+
+		assert.Contains(t, output, expected1, "expected first task in output")
+		assert.Contains(t, output, expected2, "expected second task in output")
 	})
 
 	t.Run("CompleteTask", func(t *testing.T) {
@@ -71,14 +80,35 @@ func TestTodoCLI(t *testing.T) {
 		output, err := runCommand(tmpFile.Name(), "list")
 		require.NoError(t, err, "should list tasks after completion without error")
 
-		expected := fmt.Sprintf("1. [x] %s\n", task)
-		assert.Contains(t, output, expected, "expected completed task in output")
+		expected1 := fmt.Sprintf("1. [x] %s", task1)
+		expected2 := fmt.Sprintf("2. [ ] %s", task2)
+
+		assert.Contains(t, output, expected1, "expected completed task in output")
+		assert.Contains(t, output, expected2, "expected second task to remain incomplete")
 	})
 }
 
 func runCommand(todoFile string, args ...string) (string, error) {
 	cmd := exec.Command(binPath, args...)
 	cmd.Env = append(os.Environ(), "TODOG_FILE="+todoFile)
+
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+func runCommandWithStdin(todoFile, stdin string, args ...string) (string, error) {
+	cmd := exec.Command(binPath, args...)
+	cmd.Env = append(os.Environ(), "TODOG_FILE="+todoFile)
+
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		defer stdinPipe.Close()
+		_, _ = stdinPipe.Write([]byte(stdin))
+	}()
 
 	out, err := cmd.CombinedOutput()
 	return string(out), err

@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -41,19 +43,21 @@ func Execute(version string) {
 				},
 			},
 			{
-				Name:      "task",
-				Usage:     "Add a new task",
-				UsageText: "todog task <task description>",
+				Name:  "add",
+				Usage: "Add a new task (from argument or STDIN)",
+				UsageText: `todog add [task]
+echo "task from pipe" | todog add`,
 				Action: func(c *cli.Context) error {
-					if c.NArg() == 0 {
-						return fmt.Errorf("please provide a task description")
+					task, err := getTask(os.Stdin, c.Args().Slice()...)
+					if err != nil {
+						return err
 					}
+
 					list, file, err := loadTodoList()
 					if err != nil {
 						return err
 					}
 
-					task := strings.Join(c.Args().Slice(), " ")
 					list.Add(task)
 
 					if err := list.Save(file); err != nil {
@@ -102,6 +106,27 @@ func Execute(version string) {
 		logger.Printf("Error: %v", err)
 		cli.OsExiter(1)
 	}
+}
+
+func getTask(r io.Reader, args ...string) (string, error) {
+	if len(args) > 0 {
+		return strings.Join(args, " "), nil
+	}
+
+	scanner := bufio.NewScanner(r)
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("task input is required")
+	}
+
+	text := strings.TrimSpace(scanner.Text())
+	if text == "" {
+		return "", fmt.Errorf("task cannot be blank")
+	}
+
+	return text, nil
 }
 
 func loadTodoList() (*todo.List, string, error) {
