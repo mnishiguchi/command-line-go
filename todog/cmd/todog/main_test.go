@@ -71,6 +71,13 @@ func TestTodoCLI(t *testing.T) {
 		assert.Contains(t, output, expected2, "expected second task in output")
 	})
 
+	t.Run("ListTasksWithVerboseFlag", func(t *testing.T) {
+		output, err := runCommand(tmpFile.Name(), "list", "--verbose")
+		require.NoError(t, err, "should list tasks with verbose output")
+
+		assert.Contains(t, output, "Created:", "expected verbose output to show created timestamp")
+	})
+
 	t.Run("CompleteTask", func(t *testing.T) {
 		_, err := runCommand(tmpFile.Name(), "complete", "1")
 		require.NoError(t, err, "should complete task without error")

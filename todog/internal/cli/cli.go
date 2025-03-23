@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mnishiguchi/command-line-go/todog/internal/todo"
 	"github.com/urfave/cli/v2"
@@ -22,11 +23,19 @@ func Execute(version string) {
 		Name:    "todog",
 		Version: version,
 		Usage:   "Manage your todo list from the command line",
+		Flags:   []cli.Flag{},
 		Commands: []*cli.Command{
 			{
 				Name:      "list",
 				Usage:     "List all tasks",
 				UsageText: "todog list",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Usage:   "Enable verbose output",
+						Aliases: []string{"v"},
+					},
+				},
 				Action: func(c *cli.Context) error {
 					list, _, err := loadTodoList()
 					if err != nil {
@@ -38,7 +47,24 @@ func Execute(version string) {
 						return nil
 					}
 
-					fmt.Print(list)
+					verbose := c.Bool("verbose")
+
+					for i, item := range *list {
+						status := "[ ]"
+						if item.Done {
+							status = "[x]"
+						}
+
+						fmt.Printf("%d. %s %s\n", i+1, status, item.Task)
+
+						if verbose {
+							fmt.Printf("    Created:\t%s\n", item.CreatedAt.Format(time.RFC3339))
+							if item.Done {
+								fmt.Printf("    Completed:\t%s\n", item.CompletedAt.Format(time.RFC3339))
+							}
+						}
+					}
+
 					return nil
 				},
 			},
