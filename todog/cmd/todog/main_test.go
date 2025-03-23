@@ -78,6 +78,14 @@ func TestTodoCLI(t *testing.T) {
 		assert.Contains(t, output, "Created:", "expected verbose output to show created timestamp")
 	})
 
+	t.Run("ListTasksWithHideCompleted", func(t *testing.T) {
+		output, err := runCommand(tmpFile.Name(), "list", "--hide-completed")
+		require.NoError(t, err)
+
+		assert.NotContains(t, output, "[x]", "should not show completed tasks")
+		assert.Contains(t, output, "[ ]", "should show only incomplete tasks")
+	})
+
 	t.Run("CompleteTask", func(t *testing.T) {
 		_, err := runCommand(tmpFile.Name(), "complete", "1")
 		require.NoError(t, err, "should complete task without error")

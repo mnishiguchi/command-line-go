@@ -35,6 +35,10 @@ func Execute(version string) {
 						Usage:   "Enable verbose output",
 						Aliases: []string{"v"},
 					},
+					&cli.BoolFlag{
+						Name:  "hide-completed",
+						Usage: "Hide tasks marked as completed",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					list, _, err := loadTodoList()
@@ -48,13 +52,21 @@ func Execute(version string) {
 					}
 
 					verbose := c.Bool("verbose")
+					hideCompleted := c.Bool("hide-completed")
+
+					taskCount := 0
 
 					for i, item := range *list {
+						if hideCompleted && item.Done {
+							continue
+						}
+
+						taskCount++
+
 						status := "[ ]"
 						if item.Done {
 							status = "[x]"
 						}
-
 						fmt.Printf("%d. %s %s\n", i+1, status, item.Task)
 
 						if verbose {
@@ -63,6 +75,10 @@ func Execute(version string) {
 								fmt.Printf("    Completed:\t%s\n", item.CompletedAt.Format(time.RFC3339))
 							}
 						}
+					}
+
+					if taskCount == 0 {
+						fmt.Println("No tasks to display.")
 					}
 
 					return nil
