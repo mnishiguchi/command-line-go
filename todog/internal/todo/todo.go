@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,22 @@ type Item struct {
 
 // List is a collection of to-do items.
 type List []Item
+
+func (l *List) String() string {
+	var b strings.Builder // Efficiently builds the final output string
+
+	for i, t := range *l {
+		status := "[ ]"
+
+		if t.Done {
+			status = "[x]"
+		}
+
+		fmt.Fprintf(&b, "%d. %s %s\n", i+1, status, t.Task)
+	}
+
+	return b.String()
+}
 
 // Add creates a new task and appends it to the list.
 func (l *List) Add(task string) Item {

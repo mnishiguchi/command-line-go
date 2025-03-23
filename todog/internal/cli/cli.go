@@ -36,8 +36,7 @@ func Execute(version string) {
 						return nil
 					}
 
-					printTasks(list)
-
+					fmt.Print(list)
 					return nil
 				},
 			},
@@ -49,7 +48,6 @@ func Execute(version string) {
 					if c.NArg() == 0 {
 						return fmt.Errorf("please provide a task description")
 					}
-
 					list, file, err := loadTodoList()
 					if err != nil {
 						return err
@@ -104,23 +102,6 @@ func Execute(version string) {
 		logger.Printf("Error: %v", err)
 		cli.OsExiter(1)
 	}
-}
-
-func printTasks(list *todo.List) error {
-	if len(*list) == 0 {
-		fmt.Println("No tasks found.")
-		return nil
-	}
-
-	for i, item := range *list {
-		status := "[ ]"
-		if item.Done {
-			status = "[x]"
-		}
-		fmt.Printf("%d. %s %s\n", i+1, status, item.Task)
-	}
-
-	return nil
 }
 
 func loadTodoList() (*todo.List, string, error) {
