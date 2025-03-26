@@ -1,8 +1,10 @@
 package formatter
 
 import (
+	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -16,43 +18,50 @@ type TreeNode struct {
 	Children map[string]*TreeNode
 }
 
-// RenderGitTree builds and prints a Git-tracked file tree to the provided writer.
-func RenderGitTree(root string, w io.Writer) error {
-	absRoot, err := filepath.Abs(root)
+// RenderGitTree builds and prints a Git-tracked file tree starting from the user-specified path.
+func RenderGitTree(inputPath string, w io.Writer) error {
+	absInput, err := filepath.Abs(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve absolute path: %w", err)
+		return fmt.Errorf("failed to resolve input path: %w", err)
 	}
 
-	tree, err := buildGitTree(absRoot)
+	gitRoot, err := FindGitRoot(absInput)
 	if err != nil {
-		return fmt.Errorf("failed to build tree from Git files: %w", err)
+		return fmt.Errorf("failed to find git root: %w", err)
 	}
 
-	printTree(tree, w)
-	return nil
-}
-
-// buildGitTree constructs a directory tree from Git-tracked files.
-func buildGitTree(root string) (*TreeNode, error) {
-	cmd := exec.Command("git", "-C", root, "ls-files")
+	cmd := exec.Command("git", "-C", gitRoot, "ls-files")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to run git ls-files: %w", err)
 	}
-
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 
-	rootNode := &TreeNode{
-		Name:     filepath.Base(root),
+	relInputPath, err := filepath.Rel(gitRoot, absInput)
+	if err != nil {
+		return fmt.Errorf("failed to get relative input path: %w", err)
+	}
+
+	var relevantPaths [][]string
+	for _, line := range lines {
+		if relInputPath == "." || strings.HasPrefix(line, relInputPath+"/") || line == relInputPath {
+			trimmed := strings.TrimPrefix(line, relInputPath+"/")
+			relevantPaths = append(relevantPaths, strings.Split(trimmed, "/"))
+		}
+	}
+
+	tree := &TreeNode{
+		Name:     filepath.Base(absInput),
 		IsFile:   false,
 		Children: make(map[string]*TreeNode),
 	}
 
-	for _, path := range lines {
-		addPath(rootNode, strings.Split(path, "/"))
+	for _, parts := range relevantPaths {
+		addPath(tree, parts)
 	}
 
-	return rootNode, nil
+	printTree(tree, w)
+	return nil
 }
 
 // addPath inserts a file path (split into parts) into the tree recursively.
@@ -107,4 +116,61 @@ func printChildren(node *TreeNode, prefix string, isLast bool, w io.Writer) {
 			printChildren(child, nextPrefix, i == len(keys)-1, w)
 		}
 	}
+}
+
+// RenderFileContent prints the content of a single file to the writer with line numbers.
+func RenderFileContent(path string, w io.Writer) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	file, err := os.Open(absPath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	fmt.Fprintf(w, "\n%s:\n", absPath)
+	fmt.Fprintln(w, strings.Repeat("-", 80))
+
+	scanner := bufio.NewScanner(file)
+	lineNum := 1
+	for scanner.Scan() {
+		fmt.Fprintf(w, "%4d | %s\n", lineNum, scanner.Text())
+		lineNum++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading file: %w", err)
+	}
+
+	fmt.Fprintln(w)
+	return nil
+}
+
+// FindGitRoot returns the absolute path of the Git repository root for the given path.
+func FindGitRoot(path string) (string, error) {
+	cmd := exec.Command("git", "-C", path, "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// ListGitFilesUnder returns a list of Git-tracked files under a given directory.
+func ListGitFilesUnder(dir string) ([]string, error) {
+	cmd := exec.Command("git", "-C", dir, "ls-files")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var files []string
+	for _, line := range lines {
+		files = append(files, filepath.Join(dir, line))
+	}
+	return files, nil
 }
