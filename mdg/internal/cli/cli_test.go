@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/mnishiguchi/command-line-go/mdg/internal/cli"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -15,35 +17,30 @@ const (
 )
 
 func TestCLI_PreviewToTempFile(t *testing.T) {
-	// Create an in-memory stdout buffer
 	var stdout bytes.Buffer
-
 	app := cli.NewApp("v-test")
-
-	args := []string{"cmd", "preview", "--file", inputFile, "--skip-preview"}
 	app.Writer = &stdout
 
+	args := []string{"cmd", "preview", "--file", inputFile, "--skip-preview"}
 	err := app.Run(args)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "CLI command should run without error")
 
 	resultFile := strings.TrimSpace(stdout.String())
 	t.Logf("Temp file generated: %s", resultFile)
 
-	defer os.Remove(resultFile)
+	// Cleanup file after test
+	t.Cleanup(func() {
+		_ = os.Remove(resultFile)
+	})
+
+	require.FileExists(t, resultFile, "temp output file should exist")
 
 	result, err := os.ReadFile(resultFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "should read result HTML file")
 
 	expected, err := os.ReadFile(goldenFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "should read golden HTML file")
 
-	if !bytes.Equal(expected, result) {
-		t.Errorf("Output does not match golden file")
-	}
+	assert.Equal(t, string(expected), string(result), "CLI output should match golden file")
 }
+

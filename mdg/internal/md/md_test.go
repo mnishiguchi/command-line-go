@@ -1,11 +1,12 @@
 package md_test
 
 import (
-	"bytes"
 	"os"
 	"testing"
 
 	"github.com/mnishiguchi/command-line-go/mdg/internal/md"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -15,23 +16,14 @@ const (
 
 func TestParseContent(t *testing.T) {
 	input, err := os.ReadFile(inputFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "should read input markdown file")
 
 	result, err := md.ParseContent(input, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "should parse markdown content")
 
 	expected, err := os.ReadFile(goldenFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "should read golden HTML file")
 
-	if !bytes.Equal(expected, result) {
-		t.Logf("golden:\n%s\n", expected)
-		t.Logf("result:\n%s\n", result)
-		t.Error("Result content does not match golden file")
-	}
+	assert.Equal(t, string(expected), string(result), "parsed HTML should match golden output")
 }
+
