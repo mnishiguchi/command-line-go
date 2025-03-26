@@ -131,7 +131,22 @@ func RenderFileContent(path string, w io.Writer) error {
 	}
 	defer file.Close()
 
-	fmt.Fprintf(w, "\n%s:\n", absPath)
+	// Get path relative to Git root
+	gitRoot, err := FindGitRoot(path)
+	if err != nil {
+		// fallback to current directory relative path
+		relPath, relErr := filepath.Rel(".", path)
+		if relErr != nil {
+			relPath = path
+		}
+		fmt.Fprintf(w, "\n/%s:\n", filepath.ToSlash(relPath))
+	} else {
+		relToGitRoot, err := filepath.Rel(gitRoot, path)
+		if err != nil {
+			relToGitRoot = path
+		}
+		fmt.Fprintf(w, "\n/%s:\n", filepath.ToSlash(relToGitRoot))
+	}
 	fmt.Fprintln(w, strings.Repeat("-", 80))
 
 	scanner := bufio.NewScanner(file)
