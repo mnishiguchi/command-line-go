@@ -2,63 +2,109 @@ package formatter
 
 import (
 	"fmt"
-	"os"
+	"io"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
-func Render(targetPath string) error {
-	info, err := os.Stat(targetPath)
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		return renderDirectory(targetPath)
-	} else {
-		return renderFile(targetPath)
-	}
+// TreeNode represents a node in the directory tree.
+type TreeNode struct {
+	Name     string
+	IsFile   bool
+	Children map[string]*TreeNode
 }
 
-func renderDirectory(root string) error {
-	fmt.Println("└──", filepath.Base(root))
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+// RenderGitTree builds and prints a Git-tracked file tree to the provided writer.
+func RenderGitTree(root string, w io.Writer) error {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
 
-		if path == root {
-			return nil
-		}
+	tree, err := buildGitTree(absRoot)
+	if err != nil {
+		return fmt.Errorf("failed to build tree from Git files: %w", err)
+	}
 
-		rel, _ := filepath.Rel(root, path)
-		parts := strings.Split(rel, string(os.PathSeparator))
-		prefix := strings.Repeat("    ", len(parts)-1)
+	printTree(tree, w)
+	return nil
+}
+
+// buildGitTree constructs a directory tree from Git-tracked files.
+func buildGitTree(root string) (*TreeNode, error) {
+	cmd := exec.Command("git", "-C", root, "ls-files")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+
+	rootNode := &TreeNode{
+		Name:     filepath.Base(root),
+		IsFile:   false,
+		Children: make(map[string]*TreeNode),
+	}
+
+	for _, path := range lines {
+		addPath(rootNode, strings.Split(path, "/"))
+	}
+
+	return rootNode, nil
+}
+
+// addPath inserts a file path (split into parts) into the tree recursively.
+func addPath(node *TreeNode, parts []string) {
+	if len(parts) == 0 {
+		return
+	}
+
+	name := parts[0]
+	child, exists := node.Children[name]
+	if !exists {
+		child = &TreeNode{
+			Name:     name,
+			IsFile:   len(parts) == 1,
+			Children: make(map[string]*TreeNode),
+		}
+		node.Children[name] = child
+	}
+
+	addPath(child, parts[1:])
+}
+
+// printTree prints the tree starting from the root node.
+func printTree(node *TreeNode, w io.Writer) {
+	fmt.Fprintf(w, "%s\n", node.Name)
+	printChildren(node, "", true, w)
+}
+
+// printChildren prints child nodes of the given tree node recursively.
+func printChildren(node *TreeNode, prefix string, isLast bool, w io.Writer) {
+	_ = isLast // Reserved for future enhancements (e.g., formatting tweaks)
+
+	var keys []string
+	for k := range node.Children {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for i, key := range keys {
+		child := node.Children[key]
 
 		connector := "├──"
-		if info.IsDir() {
-			fmt.Printf("%s%s %s\n", prefix, connector, info.Name())
-		} else {
-			fmt.Printf("%s%s %s\n", prefix, connector, info.Name())
+		nextPrefix := prefix + "│   "
+		if i == len(keys)-1 {
+			connector = "└──"
+			nextPrefix = prefix + "    "
 		}
-		return nil
-	})
-}
 
-func renderFile(path string) error {
-	fmt.Printf("\n%s:\n", path)
-	fmt.Println(strings.Repeat("-", 80))
+		fmt.Fprintf(w, "%s%s %s\n", prefix, connector, child.Name)
 
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return err
+		if !child.IsFile {
+			printChildren(child, nextPrefix, i == len(keys)-1, w)
+		}
 	}
-
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		fmt.Printf("%2d | %s\n", i+1, line)
-	}
-
-	fmt.Println("\n" + strings.Repeat("-", 80))
-	return nil
 }

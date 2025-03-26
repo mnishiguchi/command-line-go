@@ -17,7 +17,7 @@ func NewApp(version string) *cli.App {
 				path = c.Args().First()
 			}
 
-			return formatter.Render(path)
+			return formatter.RenderGitTree(path, c.App.Writer)
 		},
 	}
 }
