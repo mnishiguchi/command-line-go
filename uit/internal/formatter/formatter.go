@@ -92,7 +92,7 @@ func printTree(node *TreeNode, w io.Writer) {
 
 // printChildren prints child nodes of the given tree node recursively.
 func printChildren(node *TreeNode, prefix string, isLast bool, w io.Writer) {
-	_ = isLast // Reserved for future enhancements (e.g., formatting tweaks)
+	_ = isLast // Reserved for future enhancements
 
 	var keys []string
 	for k := range node.Children {
@@ -119,10 +119,14 @@ func printChildren(node *TreeNode, prefix string, isLast bool, w io.Writer) {
 }
 
 // RenderFileContent prints the content of a single file to the writer with line numbers.
-func RenderFileContent(path string, w io.Writer) error {
+func RenderFileContent(path string, w io.Writer, showBinary bool) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	if isBin, err := isBinary(absPath); err == nil && isBin && !showBinary {
+		return nil // Skip binary file
 	}
 
 	file, err := os.Open(absPath)
@@ -188,4 +192,28 @@ func ListGitFilesUnder(dir string) ([]string, error) {
 		files = append(files, filepath.Join(dir, line))
 	}
 	return files, nil
+}
+
+// isBinary checks if the file content is likely binary.
+func isBinary(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	const maxBytes = 8000
+	buf := make([]byte, maxBytes)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	for i := 0; i < n; i++ {
+		if buf[i] == 0 {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

@@ -14,6 +14,13 @@ func NewApp(version string) *cli.App {
 		Name:    "uit",
 		Usage:   "Replicate Uithub formatting locally",
 		Version: version,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "show-binary",
+				Usage: "Show binary file contents",
+				Value: false,
+			},
+		},
 		Action: func(c *cli.Context) error {
 			path := "."
 
@@ -21,6 +28,8 @@ func NewApp(version string) *cli.App {
 			if c.Args().Len() > 0 {
 				path = c.Args().First()
 			}
+
+			showBinary := c.Bool("show-binary")
 
 			// Print Git-aware tree structure rooted at given path
 			if err := formatter.RenderGitTree(path, os.Stdout); err == nil {
@@ -41,13 +50,13 @@ func NewApp(version string) *cli.App {
 				}
 
 				for _, f := range files {
-					if err := formatter.RenderFileContent(f, os.Stdout); err != nil {
+					if err := formatter.RenderFileContent(f, os.Stdout, showBinary); err != nil {
 						return fmt.Errorf("failed to render file %s: %w", f, err)
 					}
 				}
 			} else {
 				// Render a single file
-				if err := formatter.RenderFileContent(path, os.Stdout); err != nil {
+				if err := formatter.RenderFileContent(path, os.Stdout, showBinary); err != nil {
 					return fmt.Errorf("failed to render file %s: %w", path, err)
 				}
 			}

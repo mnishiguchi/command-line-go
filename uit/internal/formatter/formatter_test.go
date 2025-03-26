@@ -30,3 +30,25 @@ func TestRenderGitTree(t *testing.T) {
 		assert.Contains(t, output, "formatter.go")
 	})
 }
+
+func TestRenderFileContent(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "binary.dat")
+
+	// Write null bytes to simulate binary
+	err := os.WriteFile(tmpFile, []byte{0x00, 0x01, 0x02, 0xFF}, 0644)
+	assert.NoError(t, err)
+
+	t.Run("skips binary by default", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := formatter.RenderFileContent(tmpFile, &buf, false)
+		assert.NoError(t, err)
+		assert.Empty(t, buf.String(), "binary output should be empty by default")
+	})
+
+	t.Run("shows binary if flag is true", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := formatter.RenderFileContent(tmpFile, &buf, true)
+		assert.NoError(t, err)
+		assert.Contains(t, buf.String(), "/binary.dat")
+	})
+}
