@@ -119,14 +119,15 @@ func printChildren(node *TreeNode, prefix string, isLast bool, w io.Writer) {
 }
 
 // RenderFileContent prints the content of a single file to the writer with line numbers.
-func RenderFileContent(path string, w io.Writer, showBinary bool) error {
+func RenderFileContent(path string, w io.Writer, showBinary bool, headLines int) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
 
+	// Skip binary files unless explicitly allowed
 	if isBin, err := isBinary(absPath); err == nil && isBin && !showBinary {
-		return nil // Skip binary file
+		return nil
 	}
 
 	file, err := os.Open(absPath)
@@ -135,10 +136,10 @@ func RenderFileContent(path string, w io.Writer, showBinary bool) error {
 	}
 	defer file.Close()
 
-	// Get path relative to Git root
+	// Print heading and separator
+	// Try to show path relative to Git root if available
 	gitRoot, err := FindGitRoot(path)
 	if err != nil {
-		// fallback to current directory relative path
 		relPath, relErr := filepath.Rel(".", path)
 		if relErr != nil {
 			relPath = path
@@ -153,9 +154,13 @@ func RenderFileContent(path string, w io.Writer, showBinary bool) error {
 	}
 	fmt.Fprintln(w, strings.Repeat("-", 80))
 
+	// Print file content line by line
 	scanner := bufio.NewScanner(file)
 	lineNum := 1
 	for scanner.Scan() {
+		if headLines > 0 && lineNum > headLines {
+			break
+		}
 		fmt.Fprintf(w, "%4d | %s\n", lineNum, scanner.Text())
 		lineNum++
 	}

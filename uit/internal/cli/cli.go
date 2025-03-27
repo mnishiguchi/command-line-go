@@ -20,6 +20,10 @@ func NewApp(version string) *cli.App {
 				Usage: "Show binary file contents",
 				Value: false,
 			},
+			&cli.IntFlag{
+				Name:  "head",
+				Usage: "Limit the number of lines printed per file",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			path := "."
@@ -30,6 +34,7 @@ func NewApp(version string) *cli.App {
 			}
 
 			showBinary := c.Bool("show-binary")
+			headLines := c.Int("head")
 
 			// Print Git-aware tree structure rooted at given path
 			if err := formatter.RenderGitTree(path, os.Stdout); err == nil {
@@ -50,13 +55,13 @@ func NewApp(version string) *cli.App {
 				}
 
 				for _, f := range files {
-					if err := formatter.RenderFileContent(f, os.Stdout, showBinary); err != nil {
+					if err := formatter.RenderFileContent(f, os.Stdout, showBinary, headLines); err != nil {
 						return fmt.Errorf("failed to render file %s: %w", f, err)
 					}
 				}
 			} else {
 				// Render a single file
-				if err := formatter.RenderFileContent(path, os.Stdout, showBinary); err != nil {
+				if err := formatter.RenderFileContent(path, os.Stdout, showBinary, headLines); err != nil {
 					return fmt.Errorf("failed to render file %s: %w", path, err)
 				}
 			}
@@ -65,3 +70,4 @@ func NewApp(version string) *cli.App {
 		},
 	}
 }
+
