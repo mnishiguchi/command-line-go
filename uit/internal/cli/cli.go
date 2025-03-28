@@ -20,26 +20,32 @@ type Config struct {
 // NewApp returns a CLI app instance for uit.
 func NewApp(version string) *cli.App {
 	return &cli.App{
-		Name:    "uit",
-		Usage:   "Replicate Uithub formatting locally",
-		Version: version,
+		Name:      "uit",
+		Usage:     "Render directory tree and file contents from a Git repo",
+		UsageText: "uit [options] [path]",
+		Version:   version,
+		Authors: []*cli.Author{
+			{
+				Name: "Masatoshi Nishiguchi",
+			},
+		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "show-binary",
-				Usage: "Show binary file contents",
+				Usage: "show binary file contents",
 				Value: false,
 			},
 			&cli.IntFlag{
 				Name:  "head",
-				Usage: "Limit the number of lines printed per file",
+				Usage: "limit the number of lines printed per file",
 			},
 			&cli.BoolFlag{
 				Name:  "no-tree",
-				Usage: "Do not render the tree view",
+				Usage: "do not render the tree view",
 			},
 			&cli.BoolFlag{
 				Name:  "no-content",
-				Usage: "Do not render file contents",
+				Usage: "do not render file contents",
 			},
 		},
 		Action: func(c *cli.Context) error {
