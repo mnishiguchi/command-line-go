@@ -13,6 +13,8 @@ type Config struct {
 	Path       string
 	ShowBinary bool
 	HeadLines  int
+	NoTree     bool
+	NoContent  bool
 }
 
 // NewApp returns a CLI app instance for uit.
@@ -31,11 +33,22 @@ func NewApp(version string) *cli.App {
 				Name:  "head",
 				Usage: "Limit the number of lines printed per file",
 			},
+			&cli.BoolFlag{
+				Name:  "no-tree",
+				Usage: "Do not render the tree view",
+			},
+			&cli.BoolFlag{
+				Name:  "no-content",
+				Usage: "Do not render file contents",
+			},
 		},
 		Action: func(c *cli.Context) error {
+			// Parse CLI flags into config.
 			cfg := Config{
 				Path:       ".",
 				ShowBinary: c.Bool("show-binary"),
+				NoTree:     c.Bool("no-tree"),
+				NoContent:  c.Bool("no-content"),
 				HeadLines:  c.Int("head"),
 			}
 
@@ -52,8 +65,15 @@ func NewApp(version string) *cli.App {
 // Run executes the main logic using the given config.
 func Run(cfg Config) error {
 	// Print Git-aware tree structure rooted at given path
-	if err := formatter.RenderGitTree(cfg.Path, os.Stdout); err == nil {
-		fmt.Println() // spacer if tree was printed
+	if !cfg.NoTree {
+		if err := formatter.RenderGitTree(cfg.Path, os.Stdout); err == nil {
+			fmt.Println() // spacer if tree was printed
+		}
+	}
+
+	// Skip file content rendering entirely
+	if cfg.NoContent {
+		return nil
 	}
 
 	// Check if the input path is a file or directory
