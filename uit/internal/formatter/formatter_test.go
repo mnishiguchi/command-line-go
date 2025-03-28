@@ -96,4 +96,3 @@ line C`
 		assert.Contains(t, output, "   3 | line C")
 	})
 }
-
